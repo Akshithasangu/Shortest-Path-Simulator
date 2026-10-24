@@ -1,0 +1,559 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shortest Path Simulator</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: #f1f5f9;
+    color: #1e293b;
+}
+
+header {
+    background: #1e293b;
+    color: white;
+    padding: 22px;
+    text-align: center;
+}
+
+header h1 {
+    margin: 0 0 8px;
+}
+
+header p {
+    margin: 0;
+    color: #cbd5e1;
+}
+
+main {
+    max-width: 1250px;
+    margin: 25px auto;
+    padding: 0 18px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.5fr) minmax(260px, 1fr);
+    gap: 22px;
+}
+
+.panel {
+    background: white;
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 3px 12px #0000000b;
+    min-width: 0;
+}
+
+h2 {
+    margin-top: 0;
+    font-size: 21px;
+}
+
+#grid {
+    display: grid;
+    grid-template-columns: repeat(15, minmax(0, 1fr));
+    gap: 2px;
+    width: 100%;
+    max-width: 650px;
+    margin: 15px auto;
+}
+
+.cell {
+    aspect-ratio: 1;
+    min-width: 0;
+    border: 1px solid #cbd5e1;
+    background: #f8fafc;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 2px;
+}
+
+.cell.wall {
+    background: #475569;
+}
+
+.cell.start {
+    background: #22a65a;
+}
+
+.cell.goal {
+    background: #ef3340;
+}
+
+.cell.visited {
+    background: #60a5fa;
+    animation: appear 0.15s ease;
+}
+
+.cell.path {
+    background: #fbbf24;
+}
+
+@keyframes appear {
+    from { opacity: 0.4; }
+    to { opacity: 1; }
+}
+
+.legend {
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-top: 20px;
+    font-size: 13px;
+}
+
+.legend span {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.swatch {
+    width: 16px;
+    height: 16px;
+    border-radius: 3px;
+}
+
+.controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 20px;
+}
+
+button, select {
+    font: inherit;
+}
+
+button {
+    border: none;
+    border-radius: 7px;
+    padding: 11px 14px;
+    color: white;
+    background: #2563eb;
+    cursor: pointer;
+}
+
+button:hover {
+    filter: brightness(0.92);
+}
+
+button:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+#run {
+    background: #16a34a;
+}
+
+#clear {
+    background: #dc3545;
+}
+
+.setting {
+    margin: 16px 0;
+}
+
+label {
+    display: block;
+    font-weight: bold;
+    margin-bottom: 8px;
+}
+
+select {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    background: white;
+}
+
+.info {
+    margin-top: 20px;
+    padding: 15px;
+    border-radius: 8px;
+    background: #eff6ff;
+    border: 1px solid #bfdbfe;
+    line-height: 1.8;
+}
+
+#status {
+    font-size: 14px;
+    color: #475569;
+    margin-top: 12px;
+    min-height: 20px;
+}
+
+footer {
+    text-align: center;
+    padding: 15px;
+    color: #64748b;
+    font-size: 13px;
+}
+
+@media (max-width: 750px) {
+    main {
+        grid-template-columns: 1fr;
+    }
+
+    .panel {
+        padding: 14px;
+    }
+
+    .controls button {
+        flex: 1;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<header>
+    <h1>Shortest Path Simulator</h1>
+    <p>Find the shortest path using Dijkstra's Algorithm</p>
+</header>
+
+<main>
+    <section class="panel">
+        <h2>Interactive Grid</h2>
+        <p>Click cells to add or remove obstacles.</p>
+
+        <div id="grid" aria-label="Pathfinding grid"></div>
+
+        <div class="legend">
+            <span><i class="swatch" style="background:#22a65a"></i>Start</span>
+            <span><i class="swatch" style="background:#ef3340"></i>Goal</span>
+            <span><i class="swatch" style="background:#475569"></i>Obstacle</span>
+            <span><i class="swatch" style="background:#60a5fa"></i>Visited</span>
+            <span><i class="swatch" style="background:#fbbf24"></i>Shortest path</span>
+        </div>
+    </section>
+
+    <aside>
+        <section class="panel">
+            <h2>Controls</h2>
+
+            <div class="controls">
+                <button id="run">▶ Run Algorithm</button>
+                <button id="reset">↻ Reset</button>
+                <button id="clear">Clear Obstacles</button>
+            </div>
+
+            <div class="setting">
+                <label for="algorithm">Algorithm</label>
+                <select id="algorithm">
+                    <option value="dijkstra">Dijkstra's Algorithm</option>
+                    <option value="astar">A* Algorithm</option>
+                </select>
+            </div>
+
+            <div class="setting">
+                <label for="size">Grid Size</label>
+                <select id="size">
+                    <option value="10">10 × 10</option>
+                    <option value="15" selected>15 × 15</option>
+                    <option value="20">20 × 20</option>
+                </select>
+            </div>
+
+            <h2>Instructions</h2>
+            <ol>
+                <li>Click a cell to place or remove an obstacle.</li>
+                <li>The green cell is the start.</li>
+                <li>The red cell is the destination.</li>
+                <li>Choose an algorithm and click Run Algorithm.</li>
+                <li>Use Reset to clear the search results.</li>
+            </ol>
+
+            <div class="info">
+                <strong>Path Information</strong>
+                <div>Path Length: <span id="length">0</span></div>
+                <div>Nodes Visited: <span id="visited">0</span></div>
+                <div id="status" role="status" aria-live="polite">
+                    Ready to find a path.
+                </div>
+            </div>
+        </section>
+    </aside>
+</main>
+
+<footer>
+    Shortest Path Simulator | Algorithm Visualization Project
+</footer>
+
+<script>
+const gridElement = document.getElementById("grid");
+const runButton = document.getElementById("run");
+const resetButton = document.getElementById("reset");
+const clearButton = document.getElementById("clear");
+const sizeSelect = document.getElementById("size");
+const algorithmSelect = document.getElementById("algorithm");
+
+let size = Number(sizeSelect.value);
+let start = { r: 0, c: 0 };
+let goal = { r: size - 1, c: size - 1 };
+let walls = new Set();
+let busy = false;
+let runId = 0;
+
+const key = (r, c) => `${r},${c}`;
+
+function inside(r, c) {
+    return r >= 0 && c >= 0 && r < size && c < size;
+}
+
+function isWall(r, c) {
+    return walls.has(key(r, c));
+}
+
+function renderGrid() {
+    gridElement.style.gridTemplateColumns =
+        `repeat(${size}, minmax(0, 1fr))`;
+
+    gridElement.innerHTML = "";
+
+    for (let r = 0; r < size; r++) {
+        for (let c = 0; c < size; c++) {
+            const cell = document.createElement("button");
+            cell.className = "cell";
+            cell.type = "button";
+            cell.setAttribute("aria-label", `Row ${r + 1}, column ${c + 1}`);
+
+            if (r === start.r && c === start.c) {
+                cell.classList.add("start");
+                cell.textContent = "S";
+            } else if (r === goal.r && c === goal.c) {
+                cell.classList.add("goal");
+                cell.textContent = "G";
+            } else if (isWall(r, c)) {
+                cell.classList.add("wall");
+            }
+
+            cell.addEventListener("click", () => {
+                if (busy || isEndpoint(r, c)) return;
+
+                const k = key(r, c);
+
+                if (walls.has(k)) {
+                    walls.delete(k);
+                } else {
+                    walls.add(k);
+                }
+
+                resetSearch(false);
+                renderGrid();
+            });
+
+            gridElement.appendChild(cell);
+        }
+    }
+}
+
+function isEndpoint(r, c) {
+    return (r === start.r && c === start.c) ||
+           (r === goal.r && c === goal.c);
+}
+
+function resetSearch(updateStatus = true) {
+    runId++;
+    busy = false;
+    runButton.disabled = false;
+
+    document.querySelectorAll(".cell").forEach(cell => {
+        cell.classList.remove("visited", "path");
+    });
+
+    document.getElementById("length").textContent = "0";
+    document.getElementById("visited").textContent = "0";
+
+    if (updateStatus) {
+        document.getElementById("status").textContent =
+            "Search results cleared.";
+    }
+}
+
+function neighbors(node) {
+    const directions = [
+        [0, 1], [1, 0], [0, -1], [-1, 0]
+    ];
+
+    return directions
+        .map(([dr, dc]) => ({
+            r: node.r + dr,
+            c: node.c + dc
+        }))
+        .filter(n => inside(n.r, n.c) && !isWall(n.r, n.c));
+}
+
+function heuristic(a, b) {
+    return Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+}
+
+function findPath() {
+    const startKey = key(start.r, start.c);
+    const goalKey = key(goal.r, goal.c);
+    const useAStar = algorithmSelect.value === "astar";
+
+    const distances = new Map([[startKey, 0]]);
+    const parents = new Map();
+    
+const open = [{
+    r: start.r,
+    c: start.c,
+    score: useAStar ? heuristic(start, goal) : 0
+}];
+    const visited = [];
+    const closed = new Set();
+
+    while (open.length) {
+        open.sort((a, b) => a.score - b.score);
+
+        const current = open.shift();
+        const currentKey = key(current.r, current.c);
+
+        if (closed.has(currentKey)) continue;
+
+        closed.add(currentKey);
+        visited.push(current);
+
+        if (currentKey === goalKey) {
+            const path = [];
+            let k = goalKey;
+
+            while (k !== startKey) {
+                const [r, c] = k.split(",").map(Number);
+                path.unshift({ r, c });
+                k = parents.get(k);
+
+                if (k === undefined) {
+                    return { visited, path: [] };
+                }
+            }
+
+            return { visited, path };
+        }
+
+        for (const next of neighbors(current)) {
+            const nextKey = key(next.r, next.c);
+
+            if (closed.has(nextKey)) continue;
+
+            const newDistance = distances.get(currentKey) + 1;
+
+            if (newDistance < (distances.get(nextKey) ?? Infinity)) {
+                distances.set(nextKey, newDistance);
+                parents.set(nextKey, currentKey);
+
+                const score = newDistance +
+                    (useAStar ? heuristic(next, goal) : 0);
+
+                open.push({ ...next, score });
+            }
+        }
+    }
+
+    return { visited, path: [] };
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function runAlgorithm() {
+    if (busy) return;
+
+    resetSearch(false);
+
+    const thisRun = runId;
+    busy = true;
+    runButton.disabled = true;
+
+    document.getElementById("status").textContent =
+        "Searching for the shortest path...";
+
+    const result = findPath();
+    const cells = [...document.querySelectorAll(".cell")];
+
+    for (const node of result.visited) {
+        if (thisRun !== runId) return;
+
+        if (!isEndpoint(node.r, node.c)) {
+            cells[node.r * size + node.c].classList.add("visited");
+        }
+
+        document.getElementById("visited").textContent =
+            result.visited.length;
+
+        await sleep(12);
+    }
+
+    if (thisRun !== runId) return;
+
+    if (result.path.length === 0) {
+        document.getElementById("status").textContent =
+            "No path found. Try removing some obstacles.";
+    } else {
+        for (const node of result.path) {
+            if (thisRun !== runId) return;
+
+            cells[node.r * size + node.c].classList.remove("visited");
+            cells[node.r * size + node.c].classList.add("path");
+
+            await sleep(30);
+        }
+
+        document.getElementById("length").textContent =
+            result.path.length;
+
+        document.getElementById("status").textContent =
+            "Shortest path found successfully!";
+    }
+
+    if (thisRun === runId) {
+        busy = false;
+        runButton.disabled = false;
+    }
+}
+
+runButton.addEventListener("click", runAlgorithm);
+
+resetButton.addEventListener("click", () => {
+    resetSearch();
+});
+
+clearButton.addEventListener("click", () => {
+    resetSearch(false);
+    walls.clear();
+    renderGrid();
+
+    document.getElementById("status").textContent =
+        "All obstacles cleared.";
+});
+
+sizeSelect.addEventListener("change", () => {
+    resetSearch(false);
+    size = Number(sizeSelect.value);
+    start = { r: 0, c: 0 };
+    goal = { r: size - 1, c: size - 1 };
+    walls.clear();
+    renderGrid();
+
+    document.getElementById("status").textContent =
+        "Grid size updated.";
+});
+
+renderGrid();
+</script>
+
+</body>
+</html>
